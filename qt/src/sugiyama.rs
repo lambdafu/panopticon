@@ -42,7 +42,7 @@ use glpk;
 
 pub fn layout(vertices: &Vec<usize>,
               edges: &Vec<(usize,usize)>,
-              _dims: &HashMap<usize,(f32,f32)>,
+              _dims: &mut HashMap<usize,(f32,f32)>,
               entry: Option<usize>,
               node_spacing: usize,
               rank_spacing: usize,
@@ -60,6 +60,9 @@ pub fn layout(vertices: &Vec<usize>,
             maybe_entry = Some(rev[&n].clone());
         }
 
+        if ! _dims.contains_key(&n) {
+        _dims.insert(n, (1.,1.));
+       }
         dims.insert(vx,_dims[&n]);
     }
 

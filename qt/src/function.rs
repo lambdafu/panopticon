@@ -369,7 +369,7 @@ pub fn layout(arg0: &Variant, arg1: &Variant, arg2: &Variant, arg3: &Variant, ar
                 thread::spawn(move || {
                     let res = sugiyama::layout(&(0..vertices.len()).collect::<Vec<usize>>(),
                                                &edges,
-                                               &dims_transformed,
+                                               &mut dims_transformed,
                                                maybe_entry,
                                                node_spacing as usize,
                                                rank_spacing as usize,
