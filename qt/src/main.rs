@@ -30,6 +30,7 @@ extern crate lazy_static;
 mod controller;
 mod state;
 mod function;
+mod data;
 mod sugiyama;
 
 use std::env::home_dir;

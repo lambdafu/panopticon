@@ -358,5 +358,31 @@ Item {
 				}
 			}
 		}
+
+		Tab {
+			id: listview
+			title: "Listview"
+
+			Component {
+				 id: row
+
+				 Text {
+					id: rowContents
+					text: Panopticon.rowInfo(index)
+				}
+			}
+
+			ListView {
+				 id: lst
+				 model: Panopticon.rowCount()
+				 delegate: row
+				 cacheBuffer: 1
+				 maximumFlickVelocity: 1500
+				 boundsBehavior: Flickable.StopAtBounds
+				 anchors.fill: parent
+			}
+		}
+
+
 	}
 }

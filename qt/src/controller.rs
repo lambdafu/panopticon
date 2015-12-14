@@ -20,10 +20,12 @@ use libc::c_int;
 use std::sync::RwLock;
 
 use panopticon::project::Project;
+use data::LinearData;
 use qmlrs::{ffi,MetaObject,Variant,Object,ToQVariant,unpack_varlist};
 
 lazy_static! {
     pub static ref PROJECT: RwLock<Option<Project>> = RwLock::new(None);
+    pub static ref LINEARDATA: RwLock<Option<LinearData>> = RwLock::new(None);
 }
 
 extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi::QVariantList, ret: *mut ffi::QVariant) {
@@ -44,6 +46,8 @@ extern "C" fn controller_slot(this: *mut ffi::QObject, id: c_int, a: *const ffi:
         (FUNCTION_INFO,1) => ::function::metainfo(&args[0]).to_qvariant(ret),
         (FUNCTION_CFG,1) => ::function::control_flow_graph(&args[0]).to_qvariant(ret),
         (ALL_TARGETS,0) => ::function::targets().to_qvariant(ret),
+	(ROW_COUNT,0) => ::data::row_count().to_qvariant(ret),
+	(ROW_INFO,1) => ::data::row_info(&args[0]).to_qvariant(ret),
 
         // Self-contained functions
         (SUGIYAMA_LAYOUT,5) => ::function::layout(&args[0],&args[1],&args[2],&args[3],&args[4],&mut obj).to_qvariant(ret),
@@ -83,8 +87,10 @@ pub const SNAPSHOT_PROJECT: isize = 15;
 pub const FUNCTION_INFO: isize = 16;
 pub const FUNCTION_CFG: isize = 17;
 pub const ALL_TARGETS: isize = 18;
+pub const ROW_COUNT: isize = 19;
+pub const ROW_INFO: isize = 20;
 
-pub const SUGIYAMA_LAYOUT: isize = 19;
+pub const SUGIYAMA_LAYOUT: isize = 21;
 
 
 pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngine) -> *mut ffi::QObject {
@@ -129,6 +135,8 @@ pub extern "C" fn create_singleton(_: *mut ffi::QQmlEngine, _: *mut ffi::QJSEngi
     assert_eq!(metaobj.add_method("functionInfo(QString)","QString"),FUNCTION_INFO);
     assert_eq!(metaobj.add_method("functionCfg(QString)","QString"),FUNCTION_CFG);
     assert_eq!(metaobj.add_method("allTargets()","QString"),ALL_TARGETS);
+    assert_eq!(metaobj.add_method("rowCount()","int"), ROW_COUNT);
+    assert_eq!(metaobj.add_method("rowInfo(int)","QString"), ROW_INFO);
 
     // setter
     assert_eq!(metaobj.add_method("sugiyamaLayout(QString,QString,int,int,int)","QString"),SUGIYAMA_LAYOUT);
