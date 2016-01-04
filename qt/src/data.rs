@@ -19,44 +19,81 @@
 use qmlrs::{Variant};
 use panopticon::project::Project;
 use controller::{PROJECT,LINEARDATA};
+use qmlrs::variant::FromQVariant;
+use panopticon::layer::Layer;
+
+use graph_algos::GraphTrait;
 
 pub struct LinearData {
     pub name: String,
-    pub count: i64
+    pub count: i64,
+    pub lines: Vec<String>
 }
 
-pub fn ensure_data() -> &'static LinearData {
+fn fill_data(data: &mut LinearData)
+{
+    let read_guard_ = PROJECT.read().unwrap();
+    let proj: &Project = read_guard_.as_ref().unwrap();
+
+    for (bound, regionref) in proj.sources.projection() {
+        let region = proj.sources.dependencies.vertex_label(regionref).unwrap();
+        data.lines.push(format!("Region name={}, size={}", region.name(), region.size()).clone());
+        for (bound, layer) in region.flatten() {
+            let line = match layer {
+                &Layer::Opaque(_) => format!("OpaqueLayer start={}, end={}", bound.start, bound.end).clone(),
+                &Layer::Sparse(_) => format!("SparseLayer start={}, end={}", bound.start, bound.end).clone()
+	    };
+            data.lines.push(line);
+        }
+    }
+}
+
+
+fn ensure_data() {
     {
         let read_guard = LINEARDATA.read().unwrap();
         let data: Option<&LinearData> = read_guard.as_ref();
-	if &data == None {
-	}
-	else {
-	   return data.unwrap();
+	if let Some(lindata) = data {
+	    return;
 	}
     }
 
-    {
-	let mut data = LinearData {
-            name: "Test".to_string(),
-            count: 3
-        };
-        LINEARDATA.write().unwrap() = Some(data);
-    }
-    ensure_data();
+    let mut data = LinearData {
+    	name: "Test".to_string(),
+        count: 3,
+	lines: vec![]
+    };
+
+    fill_data(&mut data);
+
+    *LINEARDATA.write().unwrap() = Some(data);
 }
 
 pub fn row_info(arg0: &Variant) -> Variant {
-    let read_guard = PROJECT.read().unwrap();
-    let proj: &Project = read_guard.as_ref().unwrap();
+    let line = if let &Variant::I64(val) = arg0 {
+      val
+    } else {
+      panic!("Something went terribly wrong!");
+    };
 
-    Variant::String(proj.name.clone())
+    let read_guard_ = PROJECT.read().unwrap();
+    let proj: &Project = read_guard_.as_ref().unwrap();
+
+    ensure_data();
+    let read_guard = LINEARDATA.read().unwrap();
+    let data = read_guard.as_ref().unwrap();
+
+    Variant::String(data.lines[line as usize].clone())
 }
 
 pub fn row_count() -> Variant {
-    let read_guard = PROJECT.read().unwrap();
-    let proj: &Project = read_guard.as_ref().unwrap();
+    let read_guard_ = PROJECT.read().unwrap();
+    let proj: &Project = read_guard_.as_ref().unwrap();
 
+    ensure_data();
+    let read_guard = LINEARDATA.read().unwrap();
+    let data = read_guard.as_ref().unwrap();
 
-    Variant::I64(3)
+    Variant::I64(data.lines.len() as i64)
 }
+

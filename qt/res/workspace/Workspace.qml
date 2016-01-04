@@ -366,7 +366,7 @@ Item {
 			Component {
 				 id: row
 
-				 Text {
+				 Label {
 					id: rowContents
 					text: Panopticon.rowInfo(index)
 				}
