@@ -21,6 +21,10 @@ use panopticon::project::Project;
 use controller::{PROJECT,LINEARDATA};
 use qmlrs::variant::FromQVariant;
 use panopticon::layer::Layer;
+use panopticon::region::Region;
+use panopticon::mnemonic::Bound;
+use std::ops::Range;
+use std::iter;
 
 use graph_algos::GraphTrait;
 
@@ -30,10 +34,58 @@ pub struct LinearData {
     pub lines: Vec<String>
 }
 
+fn fill_from_layer(data: &mut LinearData, region: &Region, bound: &Bound, layer: &Layer) {
+    let mut prev_line: String = "".to_string();
+    let mut skipping: bool = false;
+
+    let mut line: String = "".to_string();
+    let mut prepend = bound.start - (bound.start & !0x7);
+    if prepend > 0 {
+        line = iter::repeat(" ").take(2 + (prepend as usize - 1) * 3).collect();
+    }
+
+    for (offset, cell) in region.iter().cut(&(bound.start..bound.end)).enumerate() {
+        let addr = bound.start + offset as u64;
+	let elem = if let Some(byte) = cell {
+            format!("{:02x}", byte)
+        }
+        else {
+            format!("--")
+        };
+
+        if (addr % 8 == 0) {
+            line = format!("{}", elem);
+        } else {
+            line = format!("{} {}", line.clone(), elem);
+        }
+
+        if (addr + 1) % 8 == 0 {
+            if skipping {
+		if prev_line == line {
+                    continue;
+                } else {
+                    skipping = false;
+                }
+            }
+            if prev_line == line {
+                data.lines.push("*".to_string());
+                skipping = true;
+            } else {
+                data.lines.push(format!("{:04x} {}", addr & !0x7, line.clone()));
+	        prev_line = line.clone();
+	    }
+	}
+        else if addr == bound.end {
+            data.lines.push(format!("{:04x} {}", addr & !0x7, line.clone()));
+        }
+    }
+}
+
 fn fill_data(data: &mut LinearData)
 {
     let read_guard_ = PROJECT.read().unwrap();
     let proj: &Project = read_guard_.as_ref().unwrap();
+    let mut last_address: Option<u64> = None;
 
     for (bound, regionref) in proj.sources.projection() {
         let region = proj.sources.dependencies.vertex_label(regionref).unwrap();
@@ -44,7 +96,12 @@ fn fill_data(data: &mut LinearData)
                 &Layer::Sparse(_) => format!("SparseLayer start={}, end={}", bound.start, bound.end).clone()
 	    };
             data.lines.push(line);
+            fill_from_layer(data, &region, &bound, &layer);
+            last_address = Some(bound.end); 
         }
+    }
+    if let Some(addr) = last_address {
+        data.lines.push(format!("{:04x}", addr));
     }
 }
 
